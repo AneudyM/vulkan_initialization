@@ -5,6 +5,7 @@
 #include <stdexcept>
 #include <cstdlib>
 #include <vector>
+#include <optional>
 
 const uint32_t WIDTH = 800;
 const uint32_t HEIGHT = 600;
@@ -50,6 +51,16 @@ void DestroyDebugUtilsMessengerEXT(
 	}
 }
 
+struct QueueFamilyIndices
+{
+	std::optional<uint32_t> graphicsFamily;
+
+	bool isComplete()
+	{
+		return graphicsFamily.has_value();
+	}
+};
+
 class HelloTriangleApplication
 {
 public:
@@ -66,6 +77,7 @@ private:
 	GLFWwindow *window;
 	VkInstance instance;
 	VkDebugUtilsMessengerEXT debugMessenger;
+	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
 
 	void initWindow()
 	{
@@ -81,6 +93,37 @@ private:
 	{
 		createInstance();
 		setupDebugMessenger();
+		pickPhysicalDevice();
+	}
+
+	void pickPhysicalDevice()
+	{
+		uint32_t physicalDevicesCount = 0;
+		vkEnumeratePhysicalDevices(instance, &physicalDevicesCount, nullptr);
+
+		// If the system does not have a GPU supporting Vulkan, we throw an error
+		if ( physicalDevicesCount == 0 )
+		{
+			throw std::runtime_error( "failed finding GPUs with Vulkan Support" );
+		}
+
+		// Otherwise we populate a VkPhysicalDevice array with the available GPUs
+		std::vector<VkPhysicalDevice> devices( physicalDevicesCount );
+		vkEnumeratePhysicalDevices( instance, &physicalDevicesCount, devices.data() );
+		
+		for ( const auto &device : devices )
+		{
+			if ( isPhysicalDeviceSuitable( device ) )
+			{
+				physicalDevice = device;
+				break;
+			}
+		}
+
+		if ( physicalDevice == VK_NULL_HANDLE )
+		{
+			throw std::runtime_error( "failed to find a suitable GPU!" );
+		}
 	}
 
 	void populateDebugMessengerCreateInfo( VkDebugUtilsMessengerCreateInfoEXT &createInfo )
@@ -274,6 +317,46 @@ private:
 		}
 
 		return true;
+	}
+
+	bool isPhysicalDeviceSuitable(VkPhysicalDevice physicalDevice)
+	{
+		QueueFamilyIndices indices = findQueueFamilies( physicalDevice );
+
+		return indices.isComplete();
+	}
+
+	/*
+		This function checks which Queue Families are supported by device and which of them
+		supports the commands that we want to use.
+	*/
+	QueueFamilyIndices findQueueFamilies( VkPhysicalDevice physicalDevice )
+	{
+		QueueFamilyIndices indices;
+		uint32_t queueFamiliesCount = 0;
+		
+		vkGetPhysicalDeviceQueueFamilyProperties( physicalDevice, &queueFamiliesCount, nullptr );
+
+		std::vector<VkQueueFamilyProperties> queueFamilies( queueFamiliesCount );
+		vkGetPhysicalDeviceQueueFamilyProperties( physicalDevice, &queueFamiliesCount, queueFamilies.data() );
+
+		int i = 0;
+		for ( const auto &queueFamily : queueFamilies )
+		{
+			if ( queueFamily.queueFlags & VK_QUEUE_GRAPHICS_BIT )
+			{
+				indices.graphicsFamily = i;
+			}
+			
+			if ( indices.isComplete() )
+			{
+				break;
+			}
+
+			i++;
+		}
+
+		return indices;
 	}
 
 	std::vector<const char *> getRequiredExtensions()
