@@ -15,6 +15,10 @@ const std::vector<const char *> validationLayers = {
 	"VK_LAYER_KHRONOS_validation"
 };
 
+const std::vector<const char *> deviceExtensions = {
+	VK_KHR_SWAPCHAIN_EXTENSION_NAME
+};
+
 #ifdef NDEBUG
 const bool enableValidationLayers = false;
 #else
@@ -152,7 +156,8 @@ private:
 
 		deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
 
-		deviceCreateInfo.enabledExtensionCount = 0;
+		deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+		deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();	
 
 		if ( enableValidationLayers )
 		{
@@ -400,12 +405,32 @@ private:
 
 		return true;
 	}
+	
+	bool checkDeviceExtensionSupport(VkPhysicalDevice physicalDevice)
+	{
+		uint32_t extensionCount;
+		vkEnumerateDeviceExtensionProperties( physicalDevice, nullptr, &extensionCount, nullptr );
+
+		std::vector<VkExtensionProperties> availableExtensions( extensionCount );
+		vkEnumerateDeviceExtensionProperties( physicalDevice, nullptr, &extensionCount, availableExtensions.data() );
+
+		std::set<std::string> requiredExtensions( deviceExtensions.begin(), deviceExtensions.end() );
+
+		for ( const auto &extension : availableExtensions )
+		{
+			requiredExtensions.erase( extension.extensionName );
+		}
+
+		return requiredExtensions.empty();
+	}
 
 	bool isPhysicalDeviceSuitable(VkPhysicalDevice physicalDevice)
 	{
 		QueueFamilyIndices indices = findQueueFamilies( physicalDevice );
 
-		return indices.isComplete();
+		bool extensionsSupported = checkDeviceExtensionSupport( physicalDevice );
+
+		return indices.isComplete() && extensionsSupported;
 	}
 
 	/*
