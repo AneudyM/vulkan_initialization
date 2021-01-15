@@ -78,6 +78,8 @@ private:
 	VkInstance instance;
 	VkDebugUtilsMessengerEXT debugMessenger;
 	VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
+	VkDevice logicalDevice;
+	VkQueue graphicsQueue;
 
 	void initWindow()
 	{
@@ -94,6 +96,53 @@ private:
 		createInstance();
 		setupDebugMessenger();
 		pickPhysicalDevice();
+		createLogicalDevice();
+	}
+
+	void createLogicalDevice()
+	{
+		// To create a logical device we need to create a VkDeviceCreateInfo*
+		// To create a VkDeviceCreateInfo we first need a VkDeviceQueueCreateInfo*
+		
+		// 1. Get QueueFamilyIndices to pass to queueFamilyIndex attribute
+		QueueFamilyIndices indices = findQueueFamilies( physicalDevice );
+
+		// 2. VkDeviceQueueCreateInfo
+		VkDeviceQueueCreateInfo queueCreateInfo = { };
+		queueCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO;
+		queueCreateInfo.queueFamilyIndex = indices.graphicsFamily.value();
+		queueCreateInfo.queueCount = 1;
+
+		VkPhysicalDeviceFeatures deviceFeatures = { };
+
+		float queuePriority = 1.0f;
+		queueCreateInfo.pQueuePriorities = &queuePriority;
+
+		VkDeviceCreateInfo deviceCreateInfo = { };
+		deviceCreateInfo.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
+		deviceCreateInfo.queueCreateInfoCount = 1;
+
+		deviceCreateInfo.pEnabledFeatures = &deviceFeatures;
+
+		deviceCreateInfo.enabledExtensionCount = 0;
+
+		if ( enableValidationLayers )
+		{
+			deviceCreateInfo.enabledLayerCount = static_cast<uint32_t>(validationLayers.size());
+			deviceCreateInfo.ppEnabledLayerNames = validationLayers.data();
+		}
+		else
+		{
+			deviceCreateInfo.enabledLayerCount = 0;
+		}
+
+		if ( vkCreateDevice( physicalDevice, &deviceCreateInfo, nullptr, &logicalDevice ) != VK_SUCCESS )
+		{
+			throw std::runtime_error( "failed to create a logical device!" );
+		}
+
+		vkGetDeviceQueue( logicalDevice, indices.graphicsFamily.value(), 0, &graphicsQueue );
 	}
 
 	void pickPhysicalDevice()
@@ -169,6 +218,8 @@ private:
 
 	void cleanup()
 	{
+		vkDestroyDevice( logicalDevice, nullptr );
+
 		if ( enableValidationLayers )
 		{
 			DestroyDebugUtilsMessengerEXT( instance, debugMessenger, nullptr );
