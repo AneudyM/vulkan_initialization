@@ -98,6 +98,9 @@ private:
 	VkQueue graphicsQueue;
 	VkQueue presentQueue;
 	VkSwapchainKHR swapChain;
+	std::vector<VkImage> swapChainImages;
+	VkFormat swapChainImageFormat;
+	VkExtent2D swapChainExtent;
 
 	void initWindow()
 	{
@@ -174,6 +177,13 @@ private:
 		{
 			throw std::runtime_error( "failed to create swap chain!" );
 		}
+		
+		vkGetSwapchainImagesKHR( logicalDevice, swapChain, &imageCount, nullptr );
+		swapChainImages.resize( imageCount );
+		vkGetSwapchainImagesKHR( logicalDevice, swapChain, &imageCount, swapChainImages.data() );
+
+		swapChainImageFormat = surfaceFormat.format;
+		swapChainExtent = extent;
 
 	}
 
@@ -246,8 +256,6 @@ private:
 		vkGetDeviceQueue( logicalDevice, indices.graphicsFamily.value(), 0, &graphicsQueue );
 		vkGetDeviceQueue( logicalDevice, indices.presentFamily.value(), 0, &presentQueue );
 	}
-
-	
 
 	void pickPhysicalDevice()
 	{
