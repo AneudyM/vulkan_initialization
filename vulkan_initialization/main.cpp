@@ -76,6 +76,7 @@ struct SwapChainSupportDetails
 	std::vector<VkPresentModeKHR> presentModes;
 };
 
+// -------------------------------------------------------------------------------------------------------------------------
 class HelloTriangleApplication
 {
 public:
@@ -101,6 +102,7 @@ private:
 	std::vector<VkImage> swapChainImages;
 	VkFormat swapChainImageFormat;
 	VkExtent2D swapChainExtent;
+	std::vector<VkImageView> swapChainImageViews;
 
 	void initWindow()
 	{
@@ -120,6 +122,7 @@ private:
 		pickPhysicalDevice();
 		createLogicalDevice();
 		createSwapChain();
+		createImageViews();
 	}
 
 	void createSwapChain()
@@ -185,6 +188,34 @@ private:
 		swapChainImageFormat = surfaceFormat.format;
 		swapChainExtent = extent;
 
+	}
+
+	void createImageViews()
+	{
+		swapChainImageViews.resize( swapChainImages.size() );
+
+		for( size_t i = 0; i < swapChainImages.size(); i++ )
+		{
+			VkImageViewCreateInfo imageviewCreateInfo = {};
+			imageviewCreateInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+			imageviewCreateInfo.image = swapChainImages[i];
+			imageviewCreateInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+			imageviewCreateInfo.format = swapChainImageFormat;
+			imageviewCreateInfo.components.r = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageviewCreateInfo.components.g = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageviewCreateInfo.components.b = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageviewCreateInfo.components.a = VK_COMPONENT_SWIZZLE_IDENTITY;
+			imageviewCreateInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+			imageviewCreateInfo.subresourceRange.baseMipLevel = 0;
+			imageviewCreateInfo.subresourceRange.levelCount = 1;
+			imageviewCreateInfo.subresourceRange.baseArrayLayer = 0;
+			imageviewCreateInfo.subresourceRange.layerCount = 1;
+
+			if (vkCreateImageView(logicalDevice, &imageviewCreateInfo, nullptr, &swapChainImageViews[i]) != VK_SUCCESS )
+			{
+				throw std::runtime_error( "failed to create image views!" );
+			}
+		}
 	}
 
 	void createSurface()
@@ -330,6 +361,11 @@ private:
 
 	void cleanup()
 	{
+		for (auto imageView : swapChainImageViews )
+		{
+			vkDestroyImageView( logicalDevice, imageView, nullptr );
+		}
+		
 		vkDestroySwapchainKHR( logicalDevice, swapChain, nullptr );
 
 		vkDestroySurfaceKHR( instance, surface, nullptr );
