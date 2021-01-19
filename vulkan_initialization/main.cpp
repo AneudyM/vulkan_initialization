@@ -539,6 +539,7 @@ private:
 
 	void cleanup()
 	{
+		vkDestroyPipeline( logicalDevice, graphicsPipeline, nullptr );
 		vkDestroyPipelineLayout( logicalDevice, pipelineLayout, nullptr );
 		vkDestroyRenderPass( logicalDevice, renderPass, nullptr );
 		
